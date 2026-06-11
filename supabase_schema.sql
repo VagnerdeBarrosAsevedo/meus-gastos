@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.accounts (
 
 ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage their own accounts" ON public.accounts;
 CREATE POLICY "Users can manage their own accounts" 
   ON public.accounts 
   FOR ALL 
@@ -48,6 +49,7 @@ CREATE TABLE IF NOT EXISTS public.cards (
 
 ALTER TABLE public.cards ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage their own cards" ON public.cards;
 CREATE POLICY "Users can manage their own cards" 
   ON public.cards 
   FOR ALL 
@@ -76,6 +78,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage their own transactions" ON public.transactions;
 CREATE POLICY "Users can manage their own transactions" 
   ON public.transactions 
   FOR ALL 
@@ -102,6 +105,7 @@ CREATE TABLE IF NOT EXISTS public.investments (
 
 ALTER TABLE public.investments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage their own investments" ON public.investments;
 CREATE POLICY "Users can manage their own investments" 
   ON public.investments 
   FOR ALL 
@@ -126,6 +130,7 @@ CREATE TABLE IF NOT EXISTS public.goals (
 
 ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage their own goals" ON public.goals;
 CREATE POLICY "Users can manage their own goals" 
   ON public.goals 
   FOR ALL 
@@ -148,6 +153,7 @@ CREATE TABLE IF NOT EXISTS public.budgets (
 
 ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage their own budgets" ON public.budgets;
 CREATE POLICY "Users can manage their own budgets" 
   ON public.budgets 
   FOR ALL 
@@ -171,6 +177,7 @@ CREATE TABLE IF NOT EXISTS public.achievements (
 
 ALTER TABLE public.achievements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage their own achievements" ON public.achievements;
 CREATE POLICY "Users can manage their own achievements" 
   ON public.achievements 
   FOR ALL 
@@ -190,6 +197,7 @@ CREATE TABLE IF NOT EXISTS public.settings (
 
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage their own settings" ON public.settings;
 CREATE POLICY "Users can manage their own settings" 
   ON public.settings 
   FOR ALL 
