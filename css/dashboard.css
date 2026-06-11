@@ -1,0 +1,251 @@
+/* =============================================
+   FinanAI — Dashboard Styles
+   ============================================= */
+
+/* ── Dashboard KPI Grid ── */
+.dashboard-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-8);
+}
+
+/* ── Score + Quick Stats Row ── */
+.dashboard-score-row {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+/* ── Financial Score Card ── */
+.score-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-8) var(--space-6);
+}
+
+.score-card .score-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-6);
+}
+
+.score-card .score-status {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin-top: var(--space-4);
+}
+
+.score-card .score-tips {
+  margin-top: var(--space-6);
+  width: 100%;
+}
+
+.score-card .score-tip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.score-card .score-tip i {
+  color: var(--brand-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* ── Quick Stats ── */
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-5);
+}
+
+.quick-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  backdrop-filter: blur(12px);
+  transition: all var(--transition-base);
+}
+
+.quick-stat-card:hover {
+  border-color: var(--border-hover);
+}
+
+.quick-stat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.quick-stat-header i {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-base);
+}
+
+.quick-stat-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-weight: var(--font-weight-medium);
+}
+
+.quick-stat-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.quick-stat-bar {
+  margin-top: var(--space-3);
+}
+
+/* ── Charts Section ── */
+.dashboard-charts {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.chart-card {
+  padding: var(--space-6);
+}
+
+.chart-card .chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.chart-card .chart-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.chart-period-selector {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+}
+
+.chart-period-btn {
+  padding: var(--space-1) var(--space-3);
+  border-radius: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chart-period-btn:hover {
+  color: var(--text-secondary);
+}
+
+.chart-period-btn.active {
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+.chart-container {
+  position: relative;
+  height: 280px;
+}
+
+.chart-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Recent Transactions Section ── */
+.dashboard-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+.recent-transactions {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* ── Budget Overview ── */
+.budget-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.budget-item:last-child {
+  border-bottom: none;
+}
+
+.budget-category-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.budget-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.budget-category-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.budget-amounts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.budget-progress {
+  margin-top: var(--space-2);
+}
+
+.budget-percent {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 44px;
+  text-align: right;
+}
+
+/* ── Responsive Dashboard ── */
+@media (max-width: 1400px) {
+  .dashboard-kpis { grid-template-columns: repeat(2, 1fr); }
+  .dashboard-charts { grid-template-columns: 1fr; }
+  .dashboard-score-row { grid-template-columns: 1fr; }
+  .dashboard-bottom { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .dashboard-kpis { grid-template-columns: 1fr; }
+  .quick-stats { grid-template-columns: 1fr; }
+}
