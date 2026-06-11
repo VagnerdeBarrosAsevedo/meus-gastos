@@ -3,6 +3,7 @@
    ============================================= */
 
 const App = (() => {
+  const supabase = window.supabaseClient;
   let currentPage = 'dashboard';
   let sidebarCollapsed = false;
 
@@ -227,13 +228,233 @@ const App = (() => {
     }
   }
 
+  // ── Authentication & Sync System ──
+  let authMode = 'login';
+
+  function showAuthPage() {
+    const authPage = document.getElementById('auth-page');
+    if (authPage) authPage.style.display = 'flex';
+  }
+
+  function hideAuthPage() {
+    const authPage = document.getElementById('auth-page');
+    if (authPage) authPage.style.display = 'none';
+  }
+
+  function toggleAuthMode() {
+    authMode = authMode === 'login' ? 'signup' : 'login';
+    const title = document.getElementById('auth-card-title');
+    const subtitle = document.getElementById('auth-card-subtitle');
+    const submitText = document.getElementById('auth-submit-text');
+    const switchText = document.getElementById('auth-switch-text');
+    const switchLink = document.getElementById('auth-switch-link');
+    const errDiv = document.getElementById('auth-error');
+    
+    if (errDiv) errDiv.style.display = 'none';
+    
+    if (authMode === 'login') {
+      if (title) title.textContent = 'Acessar FinanAI';
+      if (subtitle) subtitle.textContent = 'Sincronize seus gastos entre celular e computador';
+      if (submitText) submitText.textContent = 'Entrar';
+      if (switchText) switchText.textContent = 'Não tem uma conta?';
+      if (switchLink) switchLink.textContent = 'Cadastre-se';
+    } else {
+      if (title) title.textContent = 'Criar Conta';
+      if (subtitle) subtitle.textContent = 'Comece a sincronizar seus dados na nuvem';
+      if (submitText) submitText.textContent = 'Cadastrar';
+      if (switchText) switchText.textContent = 'Já tem uma conta?';
+      if (switchLink) switchLink.textContent = 'Faça login';
+    }
+  }
+
+  function updateUserUI(user) {
+    const nameEl = document.getElementById('sidebar-user-name');
+    const emailEl = document.getElementById('sidebar-user-email');
+    const avatarEl = document.getElementById('sidebar-user-avatar');
+    
+    if (user) {
+      const email = user.email;
+      const username = email.split('@')[0];
+      if (nameEl) nameEl.textContent = username.charAt(0).toUpperCase() + username.slice(1);
+      if (emailEl) emailEl.textContent = email;
+      if (avatarEl) avatarEl.textContent = username.slice(0, 2).toUpperCase();
+    } else {
+      if (nameEl) nameEl.textContent = 'Usuário';
+      if (emailEl) emailEl.textContent = 'Sincronizado';
+      if (avatarEl) avatarEl.textContent = 'US';
+    }
+  }
+
+  function initRealtimeSync() {
+    if (!window.supabase || !supabase) return;
+    
+    try {
+      supabase.removeAllChannels();
+    } catch (e) {
+      console.warn("Error clearing channels:", e);
+    }
+
+    const tables = ['transactions', 'accounts', 'cards', 'goals', 'budgets', 'achievements', 'settings'];
+    tables.forEach(table => {
+      supabase
+        .channel(`public:${table}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: table }, async (payload) => {
+          console.log(`⚡ Realtime update for ${table}:`, payload);
+          await FinanDB.syncFromCloud();
+          await updateAchievementsBadge();
+          navigate(currentPage);
+        })
+        .subscribe();
+    });
+  }
+
+  async function handleAuthSubmit() {
+    const emailInput = document.getElementById('auth-email');
+    const passwordInput = document.getElementById('auth-password');
+    const submitBtn = document.getElementById('auth-submit-btn');
+    const spinner = document.getElementById('auth-spinner');
+    const submitText = document.getElementById('auth-submit-text');
+    const errDiv = document.getElementById('auth-error');
+    const errMsg = document.getElementById('auth-error-msg');
+    
+    if (!emailInput || !passwordInput || !supabase) return;
+    
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    
+    if (!email || !password) {
+      toast('warning', 'Campos vazios', 'Preencha o e-mail e a senha.');
+      return;
+    }
+    
+    submitBtn.disabled = true;
+    if (spinner) spinner.style.display = 'inline-block';
+    if (submitText) submitText.textContent = authMode === 'login' ? 'Entrando...' : 'Cadastrando...';
+    if (errDiv) errDiv.style.display = 'none';
+    
+    try {
+      if (authMode === 'login') {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        
+        if (data.user) {
+          toast('success', 'Sucesso', 'Login realizado com sucesso!');
+          
+          await FinanDB.clearAllLocal();
+          await FinanDB.syncFromCloud();
+          initRealtimeSync();
+          
+          hideAuthPage();
+          updateUserUI(data.user);
+          
+          emailInput.value = '';
+          passwordInput.value = '';
+          
+          const hash = window.location.hash.slice(1);
+          navigate(hash || 'dashboard');
+          await updateAchievementsBadge();
+        }
+      } else {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        
+        if (data.user) {
+          if (data.session) {
+            toast('success', 'Sucesso', 'Conta criada e dados sincronizados!');
+            
+            await FinanDB.migrateLocalToCloud(data.user.id);
+            initRealtimeSync();
+            
+            hideAuthPage();
+            updateUserUI(data.user);
+            
+            emailInput.value = '';
+            passwordInput.value = '';
+            
+            const hash = window.location.hash.slice(1);
+            navigate(hash || 'dashboard');
+            await updateAchievementsBadge();
+          } else {
+            toast('info', 'Confirme seu e-mail', 'Cadastro realizado! Verifique sua caixa de entrada.');
+            if (errDiv && errMsg) {
+              errDiv.style.display = 'flex';
+              errDiv.style.borderColor = 'rgba(0, 212, 170, 0.2)';
+              errDiv.style.background = 'rgba(0, 212, 170, 0.1)';
+              errDiv.style.color = 'var(--color-success)';
+              errMsg.textContent = 'Cadastro realizado com sucesso! Por favor, clique no link enviado para o seu e-mail para ativar sua conta e iniciar a sincronização.';
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Auth error:', err);
+      let friendlyMsg = err.message || 'Erro ao processar autenticação';
+      if (err.message === 'Failed to fetch' || (err.message && err.message.toLowerCase().includes('fetch'))) {
+        if (window.location.protocol === 'file:') {
+          friendlyMsg = 'Erro de Rede (file://): Você abriu o arquivo HTML diretamente no navegador. Por segurança, os navegadores bloqueiam conexões de nuvem a partir de arquivos locais (protocolo file://). Hospede no GitHub Pages ou use um servidor local para testar.';
+        } else {
+          friendlyMsg = 'Erro de Conexão: Não foi possível conectar ao servidor do Supabase. Verifique seu acesso à internet ou se a rede da sua empresa está bloqueando conexões ao banco de dados.';
+        }
+      }
+      toast('error', 'Falha na Conexão', friendlyMsg);
+      if (errDiv && errMsg) {
+        errDiv.style.display = 'flex';
+        errDiv.style.borderColor = 'rgba(255, 61, 113, 0.2)';
+        errDiv.style.background = 'rgba(255, 61, 113, 0.1)';
+        errDiv.style.color = 'var(--color-danger)';
+        errMsg.textContent = friendlyMsg;
+      }
+    } finally {
+      submitBtn.disabled = false;
+      if (spinner) spinner.style.display = 'none';
+      if (submitText) submitText.textContent = authMode === 'login' ? 'Entrar' : 'Cadastrar';
+    }
+  }
+
+  async function logout() {
+    if (supabase) {
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        
+        try {
+          supabase.removeAllChannels();
+        } catch (e) {
+          console.warn("Error clearing channels on logout:", e);
+        }
+
+        await FinanDB.clearAllLocal();
+        localStorage.removeItem('finanai-db-cleared');
+        await FinanDB.seedDemoData();
+        
+        updateUserUI(null);
+        showAuthPage();
+        toast('success', 'Sessão encerrada', 'Você saiu com sucesso.');
+      } catch (e) {
+        console.error('Error signing out:', e);
+        toast('error', 'Erro ao sair', e.message);
+      }
+    }
+  }
+
   // ── Initialize ──
   async function init() {
     try {
       // Init DB
       await FinanDB.init();
       await FinanDB.initAchievements();
-      await FinanDB.seedDemoData();
+
+      const user = await FinanDB.getActiveUser();
+      
+      if (!user) {
+        showAuthPage();
+        await FinanDB.seedDemoData();
+      } else {
+        hideAuthPage();
+        updateUserUI(user);
+        await FinanDB.syncFromCloud();
+        initRealtimeSync();
+      }
 
       // Init UI
       initTheme();
@@ -249,8 +470,10 @@ const App = (() => {
       setTimeout(initModalClicks, 100);
 
       // Navigate to initial page
-      const hash = window.location.hash.slice(1);
-      navigate(hash || 'dashboard');
+      if (user) {
+        const hash = window.location.hash.slice(1);
+        navigate(hash || 'dashboard');
+      }
 
       // Listen for hash changes
       window.addEventListener('hashchange', () => {
@@ -270,7 +493,7 @@ const App = (() => {
     init, navigate, toggleTheme, toggleSidebar, toggleAIChat,
     openModal, closeModal, closeAllModals,
     toast, currency, percent, shortDate, fullDate, monthYear,
-    updateAchievementsBadge,
+    updateAchievementsBadge, handleAuthSubmit, toggleAuthMode, logout,
     get currentPage() { return currentPage; }
   };
 })();

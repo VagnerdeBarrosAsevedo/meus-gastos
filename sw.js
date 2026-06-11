@@ -11,7 +11,9 @@ const ASSETS = [
   './css/dashboard.css',
   './css/transactions.css',
   './css/investments.css',
+  './css/auth.css',
   './js/storage.js',
+  './js/supabase-config.js',
   './js/app.js',
   './js/dashboard.js',
   './js/transactions.js',
@@ -20,7 +22,9 @@ const ASSETS = [
   './js/goals.js',
   './js/budget.js',
   './js/ai-assistant.js',
-  './js/reports.js'
+  './js/reports.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'
 ];
 
 // Install Event

@@ -26,7 +26,10 @@
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/transactions.css">
   <link rel="stylesheet" href="css/investments.css">
+  <link rel="stylesheet" href="css/auth.css">
   <link rel="manifest" href="manifest.json">
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -98,11 +101,14 @@
 
     <div class="sidebar-footer">
       <div class="sidebar-user">
-        <div class="sidebar-user-avatar">VA</div>
+        <div class="sidebar-user-avatar" id="sidebar-user-avatar">US</div>
         <div class="sidebar-user-info">
-          <div class="sidebar-user-name">Usuário</div>
-          <div class="sidebar-user-plan">Plano Pro ✨</div>
+          <div class="sidebar-user-name" id="sidebar-user-name">Usuário</div>
+          <div class="sidebar-user-plan" id="sidebar-user-email" style="font-size: 10px; opacity: 0.7;">Sincronizado</div>
         </div>
+        <button class="btn-logout" onclick="App.logout()" title="Sair da Conta" style="background:none;border:none;color:var(--text-tertiary);cursor:pointer;padding:8px;font-size:1.1rem;margin-left:auto;transition:color 0.2s">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
       </div>
     </div>
   </aside>
@@ -347,6 +353,43 @@
   </div>
 </div>
 
+<!-- Auth Overlay Page -->
+<div class="auth-page" id="auth-page" style="display: none;">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-logo">F</div>
+      <h2 class="auth-title" id="auth-card-title">Acessar FinanAI</h2>
+      <p class="auth-subtitle" id="auth-card-subtitle">Sincronize seus gastos entre celular e computador</p>
+    </div>
+    
+    <div class="auth-error" id="auth-error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span id="auth-error-msg">Erro ao realizar login</span>
+    </div>
+    
+    <form id="auth-form" onsubmit="event.preventDefault(); App.handleAuthSubmit();">
+      <div class="auth-field-group">
+        <label class="form-label">E-mail</label>
+        <input type="email" class="auth-input" id="auth-email" required placeholder="seu@email.com">
+      </div>
+      <div class="auth-field-group">
+        <label class="form-label">Senha</label>
+        <input type="password" class="auth-input" id="auth-password" required placeholder="Sua senha (mínimo 6 caracteres)" minlength="6">
+      </div>
+      
+      <button type="submit" class="auth-btn" id="auth-submit-btn">
+        <span class="auth-spinner" id="auth-spinner"></span>
+        <span id="auth-submit-text">Entrar</span>
+      </button>
+    </form>
+    
+    <div class="auth-footer">
+      <span id="auth-switch-text">Não tem uma conta?</span>
+      <a class="auth-link" id="auth-switch-link" onclick="App.toggleAuthMode()">Cadastre-se</a>
+    </div>
+  </div>
+</div>
+
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
 
@@ -354,6 +397,7 @@
      SCRIPTS
      ════════════════════════════════════════════ -->
 <script src="js/storage.js"></script>
+<script src="js/supabase-config.js"></script>
 <script src="js/app.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/transactions.js"></script>

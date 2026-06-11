@@ -3,6 +3,7 @@
    ============================================= */
 
 const FinanDB = (() => {
+  const supabase = window.supabaseClient;
   const DB_NAME = 'FinanAI';
   const DB_VERSION = 1;
   let db = null;
@@ -51,7 +52,7 @@ const FinanDB = (() => {
     return tx.objectStore(storeName);
   }
 
-  function getAll(storeName) {
+  function getAllLocal(storeName) {
     return new Promise((resolve, reject) => {
       const store = _getStore(storeName);
       const request = store.getAll();
@@ -60,7 +61,7 @@ const FinanDB = (() => {
     });
   }
 
-  function getById(storeName, id) {
+  function getByIdLocal(storeName, id) {
     return new Promise((resolve, reject) => {
       const store = _getStore(storeName);
       const request = store.get(id);
@@ -69,10 +70,10 @@ const FinanDB = (() => {
     });
   }
 
-  function add(storeName, data) {
+  function addLocal(storeName, data) {
     return new Promise((resolve, reject) => {
       const store = _getStore(storeName, 'readwrite');
-      if (!data.id) data.id = generateId();
+      if (!data.id && storeName !== 'settings') data.id = generateId();
       if (!data.createdAt) data.createdAt = new Date().toISOString();
       const request = store.add(data);
       request.onsuccess = () => resolve(data);
@@ -80,7 +81,7 @@ const FinanDB = (() => {
     });
   }
 
-  function update(storeName, data) {
+  function updateLocal(storeName, data) {
     return new Promise((resolve, reject) => {
       const store = _getStore(storeName, 'readwrite');
       data.updatedAt = new Date().toISOString();
@@ -90,13 +91,151 @@ const FinanDB = (() => {
     });
   }
 
-  function remove(storeName, id) {
+  function removeLocal(storeName, id) {
     return new Promise((resolve, reject) => {
       const store = _getStore(storeName, 'readwrite');
       const request = store.delete(id);
       request.onsuccess = () => resolve(id);
       request.onerror = () => reject(request.error);
     });
+  }
+
+  async function getActiveUser() {
+    if (!window.supabase || !supabase) return null;
+    try {
+      const { data } = await supabase.auth.getSession();
+      return data?.session?.user || null;
+    } catch (e) {
+      console.warn("Failed to get active Supabase session:", e);
+      return null;
+    }
+  }
+
+  async function getAll(storeName) {
+    const user = await getActiveUser();
+    if (user) {
+      try {
+        const { data, error } = await supabase.from(storeName).select('*');
+        if (!error && data) {
+          // Clear local and reload from cloud
+          await clearStore(storeName);
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          for (const item of data) {
+            const { user_id, ...localItem } = item;
+            store.put(localItem);
+          }
+          return data.map(item => {
+            const { user_id, ...localItem } = item;
+            return localItem;
+          });
+        } else if (error) {
+          console.error(`Supabase error fetching ${storeName}:`, error);
+        }
+      } catch (e) {
+        console.warn(`Failed to sync ${storeName} from Supabase, returning local:`, e);
+      }
+    }
+    return getAllLocal(storeName);
+  }
+
+  async function getById(storeName, id) {
+    const user = await getActiveUser();
+    if (user) {
+      try {
+        const query = supabase.from(storeName);
+        let data, error;
+        if (storeName === 'settings') {
+          const { data: d, error: err } = await query.select('*').eq('key', id).maybeSingle();
+          data = d;
+          error = err;
+        } else {
+          const { data: d, error: err } = await query.select('*').eq('id', id).maybeSingle();
+          data = d;
+          error = err;
+        }
+        if (!error && data) {
+          const { user_id, ...localItem } = data;
+          await updateLocal(storeName, localItem);
+          return localItem;
+        }
+      } catch (e) {
+        console.warn(`Failed to sync ${storeName} ID ${id} from Supabase, returning local:`, e);
+      }
+    }
+    return getByIdLocal(storeName, id);
+  }
+
+  async function add(storeName, data) {
+    if (!data.id && storeName !== 'settings') data.id = generateId();
+    if (!data.createdAt) data.createdAt = new Date().toISOString();
+
+    const saved = await addLocal(storeName, data);
+
+    const user = await getActiveUser();
+    if (user) {
+      try {
+        const supabaseData = { ...data, user_id: user.id };
+        const { error } = await supabase.from(storeName).insert([supabaseData]);
+        if (error) {
+          console.error(`Supabase error adding to ${storeName}:`, error);
+        }
+      } catch (e) {
+        console.warn(`Failed to push add for ${storeName} to Supabase:`, e);
+      }
+    }
+    return saved;
+  }
+
+  async function update(storeName, data) {
+    data.updatedAt = new Date().toISOString();
+
+    const saved = await updateLocal(storeName, data);
+
+    const user = await getActiveUser();
+    if (user) {
+      try {
+        const supabaseData = { ...data, user_id: user.id };
+        let error;
+        if (storeName === 'settings') {
+          const { error: err } = await supabase.from(storeName).upsert([supabaseData]);
+          error = err;
+        } else {
+          const { error: err } = await supabase.from(storeName).update(supabaseData).eq('id', data.id);
+          error = err;
+        }
+        if (error) {
+          console.error(`Supabase error updating in ${storeName}:`, error);
+        }
+      } catch (e) {
+        console.warn(`Failed to push update for ${storeName} to Supabase:`, e);
+      }
+    }
+    return saved;
+  }
+
+  async function remove(storeName, id) {
+    const deletedId = await removeLocal(storeName, id);
+
+    const user = await getActiveUser();
+    if (user) {
+      try {
+        let error;
+        if (storeName === 'settings') {
+          const { error: err } = await supabase.from(storeName).delete().eq('key', id).eq('user_id', user.id);
+          error = err;
+        } else {
+          const { error: err } = await supabase.from(storeName).delete().eq('id', id);
+          error = err;
+        }
+        if (error) {
+          console.error(`Supabase error deleting from ${storeName}:`, error);
+        }
+      } catch (e) {
+        console.warn(`Failed to push delete for ${storeName} to Supabase:`, e);
+      }
+    }
+    return deletedId;
   }
 
   function clearStore(storeName) {
@@ -116,6 +255,59 @@ const FinanDB = (() => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
+  }
+
+  async function migrateLocalToCloud(userId) {
+    if (!window.supabase || !supabase) return;
+    console.log("✈️ Starting local database migration to Supabase for user:", userId);
+    for (const storeName of Object.keys(STORES)) {
+      try {
+        const localItems = await getAllLocal(storeName);
+        if (localItems.length === 0) continue;
+        console.log(`Migrating ${localItems.length} items from store ${storeName}...`);
+        const recordsToUpload = localItems.map(item => {
+          return { ...item, user_id: userId };
+        });
+        const { error } = await supabase.from(storeName).upsert(recordsToUpload);
+        if (error) {
+          console.error(`Failed to migrate ${storeName}:`, error);
+        } else {
+          console.log(`Successfully migrated ${storeName}`);
+        }
+      } catch (e) {
+        console.error(`Error migrating ${storeName}:`, e);
+      }
+    }
+    console.log("☁️ Data migration to cloud completed.");
+  }
+
+  async function syncFromCloud() {
+    const user = await getActiveUser();
+    if (!user) return;
+    console.log("☁️ Syncing all data from Supabase...");
+    for (const storeName of Object.keys(STORES)) {
+      try {
+        const { data, error } = await supabase.from(storeName).select('*');
+        if (!error && data) {
+          await clearStore(storeName);
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          for (const item of data) {
+            const { user_id, ...localItem } = item;
+            store.put(localItem);
+          }
+        }
+      } catch (e) {
+        console.error(`Error syncing ${storeName} from cloud:`, e);
+      }
+    }
+    console.log("☁️ Sync complete.");
+  }
+
+  async function clearAllLocal() {
+    for (const storeName of Object.keys(STORES)) {
+      await clearStore(storeName);
+    }
   }
 
   // ── Settings helpers ──
@@ -351,6 +543,6 @@ const FinanDB = (() => {
   return {
     init, getAll, getById, add, update, remove, clearStore, getByIndex,
     getSetting, setSetting, generateId, exportAll, importAll, downloadJSON,
-    seedDemoData, initAchievements
+    seedDemoData, initAchievements, migrateLocalToCloud, syncFromCloud, clearAllLocal, getActiveUser
   };
 })();
